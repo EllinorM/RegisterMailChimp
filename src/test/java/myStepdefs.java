@@ -18,6 +18,7 @@ import static org.testng.AssertJUnit.assertEquals;
 public class myStepdefs {
     private WebDriver driver;
     private WebDriverWait wait;
+
     @Given("I have opened {string}")
     public void iHaveOpened(String browser) {
         if (browser.equals("chrome")) {
@@ -33,11 +34,12 @@ public class myStepdefs {
         driver.get("https://login.mailchimp.com/signup/");
         driver.manage().window().maximize();
     }
+
     @Given("I enter the email {string}")
     public void iEnterTheEmail(String email) {
-
-        sendKeysWithWait(driver, By.id(("email")), email);
+        interactWithWait(driver, By.id("email"), email, 15, actionType.SendKeys);
     }
+
     @Given("My random username is {int}")
     public void myRandomUsernameIsUsernameLength(int username) {
         WebElement getUsername = driver.findElement(By.id("new_username"));
@@ -58,17 +60,20 @@ public class myStepdefs {
             getUsername.sendKeys(user);
         }
     }
+
     @Given("I enter the password {string}")
     public void iEnterThePassword(String password) {
         driver.findElement(By.cssSelector("#new_password")).sendKeys(password);
         driver.findElement(By.id("marketing_newsletter")).click();
     }
+
     @When("I click the signup button")
     public void iClickTheSignupButton() {
-
-        driver.findElement(By.id("create-account-enabled")).click();
+        interactWithWait(driver, By.id("marketing_newsletter"), "", 15, actionType.Click);
+        interactWithWait(driver, By.id("create-account-enabled"), "", 20, actionType.Click);
         wait = new WebDriverWait(driver, Duration.ofSeconds(20));
     }
+
     @Then("I want the creation of the account to {string}")
     public void iWantTheCreationOfTheAccountTo(String created) {
 
@@ -76,25 +81,27 @@ public class myStepdefs {
         boolean expected = true;
         String result;
 
-        if (created.equalsIgnoreCase("yes")) {
+        if (created.equalsIgnoreCase("succeed")) {
             result = driver.getTitle();
             if (result.equalsIgnoreCase("Success | Mailchimp")) {
+                actual = true;
             }
-        } else if (created.equalsIgnoreCase("no")) {
+            assertEquals(expected, actual);
+        } else if (created.equalsIgnoreCase("fail")) {
             expected = false;
             if (driver.findElement(By.id("signup-form")).isDisplayed()) {
                 actual = false;
             }
             assertEquals(expected, actual);
         }
-        if(created.equalsIgnoreCase("no")) {
+
+        if (created.equalsIgnoreCase("fail")) {
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[class='invalid-error']")));
             String invalidError = driver.findElement(By.cssSelector("[class='invalid-error']")).getText();
-
             String expected1 = "An email address must contain a single @.";
 
-            if (invalidError.equals("Great minds think alike - someone already has this username.")) {
-                expected1 = "Great minds think alike - someone already has this username.";
+            if (invalidError.equals("Great minds think alike - someone already has this username. If it's you, log in.")) {
+                expected1 = "Great minds think alike - someone already has this username. If it's you, log in.";
             }
             if (invalidError.equals("Enter a value less than 100 characters long")) {
                 expected1 = "Enter a value less than 100 characters long";
@@ -102,15 +109,26 @@ public class myStepdefs {
             assertEquals(expected1, invalidError);
         }
     }
-        private void sendKeysWithWait (WebDriver driver, By by, String text){
-            wait = new WebDriverWait(driver, Duration.ofSeconds(15));
-            WebElement element = wait.until(ExpectedConditions.presenceOfElementLocated(by));
-            element.sendKeys(text);
-        }
 
-        @After
-        public void tearDown () {
-            driver.close();
-            driver.quit();
+    private void interactWithWait(WebDriver driver, By by, String text, Integer duration, actionType action) {
+        wait = new WebDriverWait(driver, Duration.ofSeconds(duration));
+        WebElement element = wait.until(ExpectedConditions.presenceOfElementLocated(by));
+
+        if (action == actionType.SendKeys) {
+            element.sendKeys(text);
+        } else if (action == actionType.Click) {
+            element.click();
         }
     }
+
+    @After
+    public void tearDown() {
+        driver.close();
+        driver.quit();
+    }
+}
+
+enum actionType {
+    Click,
+    SendKeys;
+}
